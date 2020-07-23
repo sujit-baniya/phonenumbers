@@ -10,3 +10,5 @@ geocoding
 buildmetadata
 functions/*
 dist/
+.idea/
+metadata
