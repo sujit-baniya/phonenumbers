@@ -1315,6 +1315,10 @@ func TestGetTimeZonesForPrefix(t *testing.T) {
 			expectedTimeZone: "Australia/Sydney",
 		},
 		{
+			num:              "+12067798181",
+			expectedTimeZone: "America/Los_Angeles",
+		},
+		{
 			num:              "+390399123456",
 			expectedTimeZone: "Europe/Rome",
 		},
