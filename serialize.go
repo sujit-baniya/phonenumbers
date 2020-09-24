@@ -8,6 +8,7 @@ import (
 	fmt "fmt"
 	"io/ioutil"
 	"strings"
+	"sync"
 )
 
 // intStringMap is our data structure for maps from prefixes to a single string
@@ -16,6 +17,8 @@ type intStringMap struct {
 	Map       map[int]string
 	MaxLength int
 }
+
+type Map map[int]string
 
 func loadPrefixMap(data string) (*intStringMap, error) {
 	rawBytes, err := decodeUnzipString(data)
@@ -48,7 +51,10 @@ func loadPrefixMap(data string) (*intStringMap, error) {
 	}
 
 	maxLength := 0
-	mappings := make(map[int]string, mappingCount)
+	var pool = sync.Pool{
+		New: func() interface{} { return new(map[int]string) },
+	}
+	mappings := pool.Get().(map[int]string)
 	prefix := 0
 	for i := 0; i < int(mappingCount); i++ {
 		// first read our diff
@@ -65,7 +71,6 @@ func loadPrefixMap(data string) (*intStringMap, error) {
 		if err != nil || int(valueIntern) >= len(values) {
 			return nil, fmt.Errorf("unable to read interned value: %v", err)
 		}
-
 		mappings[prefix] = values[valueIntern]
 
 		strPrefix := fmt.Sprintf("%d", prefix)
@@ -73,7 +78,7 @@ func loadPrefixMap(data string) (*intStringMap, error) {
 			maxLength = len(strPrefix)
 		}
 	}
-
+	pool.Put(mappings)
 	// return our values
 	return &intStringMap{
 		Map:       mappings,
