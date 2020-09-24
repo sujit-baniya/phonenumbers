@@ -48,7 +48,7 @@ func loadPrefixMap(data string) (*intStringMap, error) {
 	}
 
 	maxLength := 0
-	mappings := make(map[int]string)
+	mappings := make(map[int]string, mappingCount)
 	prefix := 0
 	for i := 0; i < int(mappingCount); i++ {
 		// first read our diff
