@@ -1,8 +1,8 @@
-module github.com/itsursujit/phonenumbers
+module github.com/sujit-baniya/phonenumbers
 
 go 1.15
 
 require (
-	github.com/golang/protobuf v1.4.2
+	github.com/golang/protobuf v1.4.3
 	google.golang.org/protobuf v1.25.0 // indirect
 )
