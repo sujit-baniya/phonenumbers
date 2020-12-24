@@ -12,3 +12,4 @@ functions/*
 dist/
 .idea/
 metadata
+/buildmetadata
