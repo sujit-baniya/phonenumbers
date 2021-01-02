@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"github.com/goccy/go-json"
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"

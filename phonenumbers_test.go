@@ -2,7 +2,7 @@ package phonenumbers
 
 import (
 	"fmt"
-	"reflect"
+	"github.com/goccy/go-reflect"
 	"regexp"
 	"testing"
 

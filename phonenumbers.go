@@ -3,7 +3,7 @@ package phonenumbers
 import (
 	"errors"
 	fmt "fmt"
-	"reflect"
+	"github.com/goccy/go-reflect"
 	"regexp"
 	"strconv"
 	"strings"
