@@ -2356,7 +2356,6 @@ func testNumberLength(number string, metadata *PhoneMetadata, numberType PhoneNu
 			return IS_POSSIBLE_LOCAL_ONLY
 		}
 	}
-
 	minimumLength := possibleLengths[0]
 	if minimumLength == actualLength {
 		return IS_POSSIBLE
@@ -2580,12 +2579,11 @@ func maybeExtractCountryCode(
 			// if it was too long before, we consider the number with
 			// the country calling code stripped to be a better result and
 			// keep that instead.
-			finds := validNumberPattern.FindAllString(fullNumber.String(), -1)
+			fullValid := validNumberPattern.MatchString(fullNumber.String())
+			nationalValid := validNumberPattern.MatchString(potentialNationalNumber.String())
+			lengthValid := testNumberLength(fullNumber.String(), defaultRegionMetadata, UNKNOWN)
 
-			cond := (len(finds) != 0 && fullNumber.String() == finds[0] &&
-				validNumberPattern.MatchString(potentialNationalNumber.String())) ||
-				testNumberLength(fullNumber.String(), defaultRegionMetadata, UNKNOWN) == TOO_LONG
-			if cond {
+			if (!fullValid && nationalValid) || lengthValid == TOO_LONG {
 				nationalNumber.Write(potentialNationalNumber.Bytes())
 				if keepRawInput {
 					val := PhoneNumber_FROM_NUMBER_WITHOUT_PLUS_SIGN
@@ -2717,6 +2715,38 @@ func maybeStripNationalPrefixAndCarrierCode(
 		}
 	}
 	return false
+}
+
+// MaybeSeparateExtensionFromPhone will extract any extension (as in, the part
+// of the number dialled after the call is connected, usually indicated with
+// extn, ext, x or similar) from the end of the number and returns it along
+// with the proceeding phone number. The phone number will maintain its
+// original formatting including alpha characters.
+func MaybeSeparateExtensionFromPhone(rawPhone string) (phoneNumber string, extension string) {
+	phoneNumber, extWithSeparator := splitAtExtensionSeparator(rawPhone)
+	if !isViablePhoneNumber(phoneNumber) || extWithSeparator == "" {
+		return rawPhone, ""
+	}
+	extension = removeLeadingExtensionSeparator(extWithSeparator)
+	return phoneNumber, extension
+}
+
+func splitAtExtensionSeparator(rawPhone string) (phoneNumber string, extWithSeparator string) {
+	ind := EXTN_PATTERN.FindStringIndex(rawPhone)
+	if len(ind) == 0 {
+		return rawPhone, ""
+	}
+	return rawPhone[0:ind[0]], rawPhone[ind[0]:]
+}
+
+func removeLeadingExtensionSeparator(extWithSeparator string) string {
+	matches := EXTN_PATTERN.FindStringSubmatch(extWithSeparator)
+	for _, extension := range matches[1:] {
+		if len(extension) > 0 {
+			return extension
+		}
+	}
+	return ""
 }
 
 // Strips any extension (as in, the part of the number dialled after the

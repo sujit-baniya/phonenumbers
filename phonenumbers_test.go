@@ -96,7 +96,6 @@ func TestParse(t *testing.T) {
 		if err != test.err {
 			t.Errorf("[test %d:err] failed: %v != %v\n", i, err, test.err)
 		}
-		fmt.Println(GetRegionCodeForNumber(num))
 		if num.GetNationalNumber() != test.expectedNum {
 			t.Errorf("[test %d:num] failed: %v != %v\n", i, num.GetNationalNumber(), test.expectedNum)
 		}
@@ -263,7 +262,6 @@ func TestRepeatedParsing(t *testing.T) {
 
 		parse := IsValidNumber(num)
 		parseToNumber := IsValidNumber(number)
-		fmt.Printf("phone number: %s, parse: %t, parseToNumber: %t\n", n, parse, parseToNumber)
 		if parse != parseToNumber {
 			t.Errorf("Numbers do not match")
 		}
@@ -323,10 +321,15 @@ func TestIsValidNumber(t *testing.T) {
 			isValid: false,
 			region:  "US",
 		}, {
-			input:   "80281234",
+			input:   "2349090000001",
 			err:     nil,
 			isValid: true,
-			region:  "SG",
+			region:  "NG",
+		}, {
+			input:   "+2349090000001",
+			err:     nil,
+			isValid: true,
+			region:  "NG",
 		},
 	}
 
@@ -339,8 +342,8 @@ func TestIsValidNumber(t *testing.T) {
 			continue
 		}
 		if IsValidNumber(num) != test.isValid {
-			t.Errorf("[test %d:validity] failed: %v != %v\n",
-				i, IsValidNumber(num), test.isValid)
+			t.Errorf("[test %d:validity] for number: %s failed: %v != %v\n",
+				i, test.input, IsValidNumber(num), test.isValid)
 		}
 	}
 }
@@ -842,6 +845,101 @@ func TestSetItalianLeadinZerosForPhoneNumber(t *testing.T) {
 	}
 }
 
+func TestIsNumberMatchWithNumbers(t *testing.T) {
+	tcs := []struct {
+		num1     string
+		reg1     string
+		num2     string
+		reg2     string
+		expected MatchType
+	}{
+		{
+			"+49 721 123456", "DE", "0049 721 123456", "DE", EXACT_MATCH,
+		},
+		{
+			"721 123456", "DE", "721 123456", "DE", EXACT_MATCH,
+		},
+		{
+			"+49 721 123456", "DE", "0721-123456", "DE", EXACT_MATCH,
+		},
+		{
+			"+49 721 123456", "DE", "0049 721-123456", "DE", EXACT_MATCH,
+		},
+		{
+			"+49 721 123456", "DE", "0049 0721 123456", "DE", EXACT_MATCH,
+		},
+		{
+			"721 123456", "DE", "+49 721 123456", "", EXACT_MATCH,
+		},
+		{
+			"0721-123456", "DE", "+49 721 123456", "DE", EXACT_MATCH,
+		},
+		{
+			"721123456", "ES", "+34 721 123456", "ES", EXACT_MATCH,
+		},
+		{
+			"0721 123456", "DE", "+49 721 123456", "ZZ", EXACT_MATCH,
+		},
+		{
+			"0721-123456", "", "+49 721 123456", "DE", NO_MATCH,
+		},
+		{
+			"0721-123456", "ES", "+49 721 123456", "DE", NO_MATCH,
+		},
+		{
+			"0721 123456", "ES", "0721 123456", "DE", NO_MATCH,
+		},
+		{
+			"123456", "DE", "0721 123456", "DE", SHORT_NSN_MATCH,
+		},
+		{
+			"0721 123456", "", "123456", "", SHORT_NSN_MATCH,
+		},
+	}
+
+	for _, tc := range tcs {
+		p1, _ := Parse(tc.num1, tc.reg1)
+		p2, _ := Parse(tc.num2, tc.reg2)
+		result := IsNumberMatchWithNumbers(p1, p2)
+		if result != tc.expected {
+			t.Errorf(`"%s"(%s) == "%s"(%s) returned %d when expecting %d`, tc.num1, tc.reg1, tc.num2, tc.reg2, result, tc.expected)
+		}
+	}
+}
+
+func TestIsNumberMatchWithOneNumber(t *testing.T) {
+	tcs := []struct {
+		num1     string
+		reg1     string
+		num2     string
+		expected MatchType
+	}{
+		{
+			"+49 721 123456", "DE", "+49721123456", EXACT_MATCH,
+		},
+		{
+			"+49 721 123456", "DE", "0049 721 123456", NSN_MATCH,
+		},
+		{
+			"6502530000", "US", "1-650-253-0000", NSN_MATCH,
+		},
+		{
+			"123456", "DE", "+49 0721 123456", SHORT_NSN_MATCH,
+		},
+		{
+			"0721 123456", "ES", "+43 721 123456", NO_MATCH,
+		},
+	}
+
+	for _, tc := range tcs {
+		p1, _ := Parse(tc.num1, tc.reg1)
+		result := IsNumberMatchWithOneNumber(p1, tc.num2)
+		if result != tc.expected {
+			t.Errorf(`"%s"(%s) == "%s" returned %d when expecting %d`, tc.num1, tc.reg1, tc.num2, result, tc.expected)
+		}
+	}
+}
+
 ////////// Copied from java-libphonenumber
 /**
  * Unit tests for PhoneNumberUtil.java
@@ -1318,6 +1416,7 @@ func TestParsing(t *testing.T) {
 		country  string
 		expected string
 	}{
+		{"746557816", "LK", "+94746557816"},
 		{"0788383383", "RW", "+250788383383"},
 		{"+250788383383 ", "KE", "+250788383383"},
 		{"+250788383383", "", "+250788383383"},
@@ -1325,7 +1424,13 @@ func TestParsing(t *testing.T) {
 		{"+62877747666", "", "+62877747666"},
 		{"0877747666", "ID", "+62877747666"},
 		{"07531669965", "GB", "+447531669965"},
+		{"447531669965", "GB", "+447531669965"},
 		{"+22658125926", "", "+22658125926"},
+		{"+2203693200", "", "+2203693200"},
+		{"0877747666", "ID", "+62877747666"},
+		{"62816640000", "ID", "+6262816640000"},
+		{"2349090000001", "NG", "+2349090000001"},
+		{"6282240080000", "ID", "+6282240080000"},
 	}
 
 	for _, tc := range tests {
@@ -1535,6 +1640,93 @@ func TestMaybeStripExtension(t *testing.T) {
 		if num.GetExtension() != test.extension {
 			t.Errorf("[test %d:num] failed: %v != %v\n", i, num.GetExtension(), test.extension)
 		}
+	}
+}
+
+func TestMaybeSeparateExtensionFromPhone(t *testing.T) {
+	tests := []struct {
+		name      string
+		rawPhone  string
+		wantPhone string
+		wantExt   string
+	}{
+		{
+			name:      "Blank",
+			rawPhone:  "",
+			wantPhone: "",
+			wantExt:   "",
+		},
+		{
+			name:      "Number only",
+			rawPhone:  "+1 306-555-1234",
+			wantPhone: "+1 306-555-1234",
+			wantExt:   "",
+		},
+		{
+			name:      "Local phone",
+			rawPhone:  "555-1234",
+			wantPhone: "555-1234",
+			wantExt:   "",
+		},
+		{
+			name:      "Local phone with ext",
+			rawPhone:  "555-1234 x 78",
+			wantPhone: "555-1234",
+			wantExt:   "78",
+		},
+		{
+			name:      "Wait separator",
+			rawPhone:  "+1 306-555-1234;78",
+			wantPhone: "+1 306-555-1234",
+			wantExt:   "78",
+		},
+		{
+			name:      "Pause separator",
+			rawPhone:  "+1 306-555-1234,78",
+			wantPhone: "+1 306-555-1234",
+			wantExt:   "78",
+		},
+		{
+			name:      "Extra space separator",
+			rawPhone:  "+1 306-555-1234   ,  78",
+			wantPhone: "+1 306-555-1234",
+			wantExt:   "78",
+		},
+		{
+			name:      "ext. separator",
+			rawPhone:  "+1 306-555-1234 ext. 78",
+			wantPhone: "+1 306-555-1234",
+			wantExt:   "78",
+		},
+		{
+			name:      "# separator",
+			rawPhone:  "+1 306-555-1234 #78",
+			wantPhone: "+1 306-555-1234",
+			wantExt:   "78",
+		},
+		{
+			name:      "RFC3966",
+			rawPhone:  "+1 306-555-1234;ext=78",
+			wantPhone: "+1 306-555-1234",
+			wantExt:   "78",
+		},
+		{
+			name:      "Vanity phone number",
+			rawPhone:  "+1 800-Go-Green #78",
+			wantPhone: "+1 800-Go-Green",
+			wantExt:   "78",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1 := MaybeSeparateExtensionFromPhone(tt.rawPhone)
+			if got != tt.wantPhone {
+				t.Errorf("Phone got = %v, want %v", got, tt.wantPhone)
+			}
+			if got1 != tt.wantExt {
+				t.Errorf("Extension got = %v, want %v", got1, tt.wantExt)
+			}
+		})
 	}
 }
 
